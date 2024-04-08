@@ -37,9 +37,9 @@ namespace ReadIpLogList
         Regex regxIPMask = new Regex(@"/^(((255\.){3}(255|254|252|248|240|224|192|128|0+))|((255\.){2}(255|254|252|248|240|224|192|128|0+)\.0)|((255\.)(255|254|252|248|240|224|192|128|0+)(\.0+){2})|((255|254|252|248|240|224|192|128|0+)(\.0+){3}))$/");
 
        
-        string fileLog, fileOutput;
+        string fileLog= "newlogfile.log", fileOutput = "outip.txt";
         IPAddress addressStart, addressMask;
-        DateTime timeStart, timeEnd;        
+        DateTime timeStart = new DateTime(2022,1,1), timeEnd = new DateTime(2023,1,1);        
 
         public Parametrs(string[] args) : this()
         {
@@ -48,31 +48,35 @@ namespace ReadIpLogList
 
         public Parametrs()
         {
+            if (!File.Exists(fileLog))
+                File.Create(fileLog);
             var configs = ConfigurationManager.AppSettings;
 
-            if (IsPathValidAndExists(configs[(int)TypeVar.FileLog]))
-                fileLog = configs[(int)TypeVar.FileLog];
-            if (IsPathValid(configs[(int)TypeVar.FileOutput]))
-                fileOutput = configs[(int)TypeVar.FileOutput];
+            SetFilLog(configs[(int)TypeVar.FileLog]);
+            SetFileOutput(configs[(int)TypeVar.FileOutput]);
 
-            TryParsedIpMask(configs[(int)TypeVar.AdressStart], out addressStart);
-            TryParsedIp(configs[(int)TypeVar.AdressMask], out addressMask);
+            SetAdressStart(configs[(int)TypeVar.AdressStart]);
+            SetAdressMask(configs[(int)TypeVar.AdressMask]);
 
-            timeStart = DateTime.ParseExact(configs[(int)TypeVar.TimeStart], "yyyy-MM-dd", provider);
-            timeEnd = DateTime.ParseExact(configs[(int)TypeVar.TimeEnd], "yyyy-MM-dd", provider);
+            SetDateStart(configs[(int)TypeVar.TimeStart]);
+            SetDateEnd(configs[(int)TypeVar.TimeEnd]);
+
         }
 
         public void SetParametrs(string[] args)
         {
-            int currType = (int)TypeVar.FileLog, maxType = (int)TypeVar.TimeEnd;
+            int currType = 0, maxType = (int)TypeVar.TimeEnd; 
             for (int i = 0; i < args.Length; i++)
             {
                 bool isValid = false;
+                
                 while (!isValid && currType <= maxType)
                 {
                     isValid = ParseType((TypeVar)currType, args[i]);
                     currType++;
                 }
+                if(currType > maxType)
+                    currType = i+1;
             }
         }
 
@@ -93,9 +97,7 @@ namespace ReadIpLogList
                     return SetAdressStart(value);
 
                 case TypeVar.AdressMask:
-                    bool ans = SetAdressMask(value);
-                    addressMask = (addressStart == null) ? null : addressMask;
-                    return ans;
+                    return SetAdressMask(value);
 
                 case TypeVar.TimeStart:
                     return SetDateStart(value);
@@ -121,7 +123,7 @@ namespace ReadIpLogList
         bool TryParsedIpMask(string ipAdress, out IPAddress address)
         {
             address = null;
-            return regxIP.IsMatch(ipAdress) && IPAddress.TryParse(ipAdress, out address); ;
+            return regxIPMask.IsMatch(ipAdress) && IPAddress.TryParse(ipAdress, out address); ;
         }
         public static bool TryParsedIp(string ipAdress, out IPAddress address)
         {
@@ -178,7 +180,7 @@ namespace ReadIpLogList
 
             }
 
-            return addressMask == null;
+            return addressMask != null;
         }
 
         IPAddress getMask(int numMask)
@@ -192,8 +194,9 @@ namespace ReadIpLogList
                 bts[i] = 255;
             }
 
-            if (i < bts.Length){
-                bts[i] = (byte)(256 - (1 << (numMask % 8)));
+            if (i < bts.Length && (numMask % 8 > 0))
+            {
+                bts[i] = (byte)(256 - (1 << (8 - numMask % 8)));
             }
 
             return new IPAddress(bts);
@@ -201,17 +204,24 @@ namespace ReadIpLogList
 
         bool SetDateStart(string value)
         {
-            return TryParseDateTime(value, ref timeStart);
+            bool res =  TryParseDateTime(value, ref timeStart);
+            if (timeEnd != null)
+                CorrectTimeEnd();
+            return res;
         }
-
+        void CorrectTimeEnd()
+        {
+            if (timeStart > timeEnd)
+                timeEnd = timeStart;
+        }
         bool SetDateEnd(string value)
         {
             if( TryParseDateTime(value, ref timeEnd))
             {
-                if (timeStart > timeEnd)
-                    timeEnd = timeStart;
+                CorrectTimeEnd();
                 return true;
             }
+            CorrectTimeEnd();
             return false;
         }
 

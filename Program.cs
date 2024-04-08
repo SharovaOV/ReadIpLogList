@@ -13,21 +13,19 @@ namespace ReadIpLogList
         {
             Parametrs parametrs;
             parametrs = new Parametrs(args);
-            Console.WriteLine($"file for load: {parametrs.FileLog}");
-            Console.WriteLine($"file for output: {parametrs.FileOutput}");
-            Console.WriteLine($"startIp for output: {parametrs.AddressStart}");
-            Console.WriteLine($"maskIp for output: {parametrs.AddressMask}");
-            Console.WriteLine($"startDate for output: {parametrs.TimeStart:dd:MM:yyyy}"); 
-            Console.WriteLine($"endDate for output: {parametrs.TimeEnd:dd:MM:yyyy}");
+            Console.WriteLine($"Path file for load: {parametrs.FileLog}");
+            Console.WriteLine($"Path file for output: {parametrs.FileOutput}");
+            Console.WriteLine($"Start IP for output: {parametrs.AddressStart}");
+            Console.WriteLine($"Netmask for output: {parametrs.AddressMask}");
+            Console.WriteLine($"Range start date for output: {parametrs.TimeStart:dd.MM.yyyy}"); 
+            Console.WriteLine($"Range end date for output: {parametrs.TimeEnd:dd.MM.yyyy}");
             ListRange.Create(parametrs);
-            
-            weightKey();
+            WaitingKey();
         }
-        static void weightKey()
+        static void WaitingKey()
         {
-            Console.WriteLine("Нажмите enter для выхода...");
-            Console.Read();
-
+            Console.WriteLine("Press any key for exit...");
+            Console.ReadKey();
         }
     }
 }
