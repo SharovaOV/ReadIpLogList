@@ -9,6 +9,8 @@ namespace ReadIpLogList
         HashSet<string> outsider;
         string fileOutput, fileLog;
         DateTime dtStart, dtEnd;
+
+        string separator = ":";
         public IpRange(Parametrs parametrs)
         {
             inRange = new Dictionary<string, int>();
@@ -41,7 +43,7 @@ namespace ReadIpLogList
             {
                 foreach (var rng in inRange)
                 {
-                    writer.WriteLine($"{rng.Key}:{rng.Value}");
+                    writer.WriteLine($"{rng.Key}{separator}{rng.Value}");
                 }
             }
         }

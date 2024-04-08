@@ -43,16 +43,7 @@ namespace ReadIpLogList
 
         public Parametrs(string[] args) : this()
         {
-            int currType = (int)TypeVar.FileLog, maxType = (int)TypeVar.TimeEnd;
-            for (int i = 0; i < args.Length; i++)
-            {
-                bool isValid = false;
-                while (!isValid && currType <= maxType)
-                {
-                    isValid = ParseType((TypeVar)currType, args[i]);
-                    currType++;
-                }
-            }
+            SetParametrs(args);
         }
 
         public Parametrs()
@@ -71,6 +62,20 @@ namespace ReadIpLogList
             timeEnd = DateTime.ParseExact(configs[(int)TypeVar.TimeEnd], "yyyy-MM-dd", provider);
         }
 
+        public void SetParametrs(string[] args)
+        {
+            int currType = (int)TypeVar.FileLog, maxType = (int)TypeVar.TimeEnd;
+            for (int i = 0; i < args.Length; i++)
+            {
+                bool isValid = false;
+                while (!isValid && currType <= maxType)
+                {
+                    isValid = ParseType((TypeVar)currType, args[i]);
+                    currType++;
+                }
+            }
+        }
+
         bool ParseType(TypeVar type, string value)
         {
             if (value == "def") return true;
@@ -78,43 +83,35 @@ namespace ReadIpLogList
             {
                 default: return false;
 
-                case TypeVar.FileLog:
-                    if (IsPathValidAndExists(value))
-                    {
-                        fileLog = value;
-                        return true;
-                    }
-                    break;
+                case TypeVar.FileLog:                    
+                    return SetFilLog(value);
 
                 case TypeVar.FileOutput:
-                    if (IsPathValid(value)) 
-                    {
-                        fileOutput = value;
-                        return true;
-                    }
-                    break;
+                    return SetFileOutput(value);
 
                 case TypeVar.AdressStart:
-                    return TryParsedIp(value, out addressStart);
+                    return SetAdressStart(value);
 
                 case TypeVar.AdressMask:
-                    bool ans = TryParsedIp(value, out addressMask);
+                    bool ans = SetAdressMask(value);
                     addressMask = (addressStart == null) ? null : addressMask;
                     return ans;
 
                 case TypeVar.TimeStart:
-                    return TryParseDateTime(value, ref timeStart);
+                    return SetDateStart(value);
                     
                 case TypeVar.TimeEnd:
-                    return TryParseDateTime(value, ref timeStart);
-
+                    return SetDateEnd(value);
             }
-            return false;
         }
+        
 
         bool IsPathValid(string filePath)
         {
-            return !string.IsNullOrWhiteSpace(filePath) && !filePath.ToCharArray().Any(pc => _invalidCharacters.Contains(pc));
+            return !string.IsNullOrWhiteSpace(filePath) &&
+                    !filePath.ToCharArray().Any(pc => _invalidCharacters.Contains(pc)) &&
+                    !DateTime.TryParseExact(filePath, "dd.MM.yyyy",provider,DateTimeStyles.None,out var dt) &&
+                    !regxIP.IsMatch(filePath);
         }
 
         bool IsPathValidAndExists(string filePath)
@@ -138,6 +135,85 @@ namespace ReadIpLogList
             tm = ans ? tempDate : tm;
             return ans;
         }
-        
+
+
+        bool SetFilLog(string value)
+        {
+            if (IsPathValidAndExists(value))
+            {
+                fileLog = value;
+                return true;
+            }
+            return false;
+        }
+
+        bool SetFileOutput(string value)
+        {
+            if (IsPathValid(value))
+            {
+                fileOutput = value;
+                return true;
+            }
+            return false;
+        }
+
+        bool SetAdressStart(string value)
+        {
+            return TryParsedIp(value, out addressStart);
+        }
+
+        bool SetAdressStart(IPAddress address)
+        {
+            addressStart = address;
+            return true;
+        }
+
+        bool SetAdressMask(string value)
+        {
+            if(!TryParsedIpMask(value, out addressMask)){
+                if(!string.IsNullOrEmpty(value) && int.TryParse(value, out var num))
+                {
+                    addressMask = getMask(num);
+                }
+
+            }
+
+            return addressMask == null;
+        }
+
+        IPAddress getMask(int numMask)
+        {
+            if (numMask > 32) return null;
+
+            byte[] bts = new byte[4];
+            int sizeFill = numMask / 8, i=0;
+            for(;i< sizeFill; i++)
+            {
+                bts[i] = 255;
+            }
+
+            if (i < bts.Length){
+                bts[i] = (byte)(256 - (1 << (numMask % 8)));
+            }
+
+            return new IPAddress(bts);
+        }
+
+        bool SetDateStart(string value)
+        {
+            return TryParseDateTime(value, ref timeStart);
+        }
+
+        bool SetDateEnd(string value)
+        {
+            if( TryParseDateTime(value, ref timeEnd))
+            {
+                if (timeStart > timeEnd)
+                    timeEnd = timeStart;
+                return true;
+            }
+            return false;
+        }
+
     }
 }
